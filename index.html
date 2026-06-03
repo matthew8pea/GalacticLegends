@@ -1709,7 +1709,6 @@
 
             // ── WEAPON EMOJI MAP ───────────────────────────────────────
             const weaponEmoji = { lightsaber:'⚔️', darksaber:'🖤', blaster:'🔫', zap:'⚡', staff:'🪄', bowcaster:'🏹', wrench:'🔧', lightning:'🌩️' };
-            const factionEmoji = { heroes:'🔵', villains:'🔴', secret:'🟣' };
 
             // ── DIFFICULTY ─────────────────────────────────────────────
             let currentDifficulty = 'normal';
@@ -1755,7 +1754,6 @@
             // ── GAME STATS ─────────────────────────────────────────────
             let killCount = 0;
             let gameStartTime = 0;
-            let countdownActive = false;
             let playerDamageDealt = 0;
             let playerShotsFired = 0;
             let playerHitsLanded = 0;
@@ -2344,7 +2342,7 @@
             let gameUnlocks = { secretFaction: false, burntAnakin: false, tatooineArena: false, senatorPalpatine: false, jabbaUnlock: false };
 
             function persistGalacticUnlocks() {
-                try { localStorage.setItem('galacticDuelUnlocks', JSON.stringify(gameUnlocks)); } catch(e) {}
+                try { localStorage.setItem('galacticDuelUnlocks', JSON.stringify(gameUnlocks)); } catch {}
             }
 
             function updateSecretFactionSectionVisibility() {
@@ -2361,7 +2359,7 @@
                     gameUnlocks.tatooineArena = !!u.tatooineArena;
                     gameUnlocks.senatorPalpatine = !!u.senatorPalpatine;
                     gameUnlocks.jabbaUnlock = !!u.jabbaUnlock;
-                } catch(e) {}
+                } catch {}
                 updateSecretFactionSectionVisibility();
                 // Show Tatooine arena button if unlocked
                 if (gameUnlocks.tatooineArena) {
@@ -2372,7 +2370,6 @@
             let saberWinCount = 0;
             let playerTookDamage = false;
             let comboKills = [];
-            let lastKillTime = 0;
             let blasterWinCount = 0;
             let saberWinCount2 = 0;
             let spaceWinCount = 0;
@@ -2401,7 +2398,7 @@
                     saved._arenasWonIn     = [...arenasWonIn];
                     saved._villainsDefeated= [...villainsDefeated];
                     localStorage.setItem('galacticDuelAchievements', JSON.stringify(saved));
-                } catch(e) {}
+                } catch {}
                 showAchievementToast(a);
                 rebuildSecretRoster();
                 rebuildHeroRoster();
@@ -2422,7 +2419,7 @@
                     saved._vaderConsecutiveWins = vaderConsecutiveWins;
                     saved._lastPlayedCharacterId = lastPlayedCharacterId;
                     localStorage.setItem('galacticDuelAchievements', JSON.stringify(saved));
-                } catch(e) {}
+                } catch {}
             }
 
             function loadAchievements() {
@@ -2440,7 +2437,7 @@
                     villainsDefeated = new Set(saved._villainsDefeated || []);
                     vaderConsecutiveWins = saved._vaderConsecutiveWins || 0;
                     lastPlayedCharacterId = saved._lastPlayedCharacterId || null;
-                } catch(e) {}
+                } catch {}
             }
             loadAchievements();
 
@@ -2555,11 +2552,6 @@
             let musicVolume = 0.55;
             let sfxVolume   = 1.0; // 0–1 multiplier; declared here so loadGameSettings() can read it
 
-            function isItchHost() {
-                const h = (location.hostname || '').toLowerCase();
-                return h.endsWith('itch.io') || h.endsWith('itch.zone');
-            }
-
             function loadGameSettings() {
                 try {
                     const saved = JSON.parse(localStorage.getItem('galacticDuelSettings') || '{}');
@@ -2567,7 +2559,7 @@
                     bendyUnlocked = !!saved.bendyUnlocked;
                     musicVolume = typeof saved.musicVolume === 'number' ? saved.musicVolume : musicVolume;
                     sfxVolume   = typeof saved.sfxVolume   === 'number' ? saved.sfxVolume   : sfxVolume;
-                } catch (e) {}
+                } catch {}
                 updateMusicSources();
             }
 
@@ -2579,7 +2571,7 @@
                         musicVolume,
                         sfxVolume
                     }));
-                } catch (e) {}
+                } catch {}
             }
 
             function updateBendyToggleVisibility() {
@@ -3026,7 +3018,7 @@
                             historyTableBody.appendChild(tr);
                         });
                     }
-                } catch(e) {}
+                } catch {}
                 historyOverlay.style.display = 'flex';
             }
 
@@ -3146,11 +3138,9 @@
                     case 'chain':
                         // Chain Lightning
                         let currentTarget = target;
-                        let totalDamage = 0;
                         for (let i = 0; i < ability.bounces; i++) {
                             if (currentTarget && currentTarget.isAlive) {
                                 currentTarget.updateHealth(ability.damage);
-                                totalDamage += ability.damage;
                                 createAbilityEffect(character.x, character.y, currentTarget.x, currentTarget.y, '#cc00ff');
                                 // Find next target (alternate between player and enemy)
                                 currentTarget = currentTarget.team === 'player' ? mainEnemy : mainPlayer;
@@ -3544,7 +3534,7 @@
                     const saved = {};
                     Object.keys(achievements).forEach(id => { saved[id] = true; });
                     localStorage.setItem('galacticDuelAchievements', JSON.stringify(saved));
-                } catch(err) {}
+                } catch {}
                 gameUnlocks.burntAnakin = true;
                 persistGalacticUnlocks();
                 rebuildSecretRoster();
@@ -3599,7 +3589,6 @@
             let saberTrails = [];
             let screenShake = { intensity: 0, duration: 0 };
             let slowMotion = { active: false, scale: 1, duration: 0 };
-            let killCamera = { active: false, target: null, zoom: 1, duration: 0 };
             let dodgeFlashes = [];
             let lowHealthVignette = false;
 
@@ -3803,37 +3792,6 @@
                 }
             }
 
-            // ── KILL CAMERA ────────────────────────────────────────────
-            function triggerKillCamera(target) {
-                killCamera.active = true;
-                killCamera.target = target;
-                killCamera.zoom = 1;
-                killCamera.duration = 60;
-            }
-
-            function updateKillCamera(tickScale) {
-                if (killCamera.active) {
-                    killCamera.duration -= tickScale;
-                    if (killCamera.zoom < 1.5) {
-                        killCamera.zoom += 0.01 * tickScale;
-                    }
-                    if (killCamera.duration <= 0) {
-                        killCamera.active = false;
-                        killCamera.zoom = 1;
-                    }
-                }
-            }
-
-            function applyKillCamera() {
-                if (killCamera.active && killCamera.target) {
-                    const targetX = killCamera.target.x;
-                    const targetY = killCamera.target.y;
-                    ctx.translate(canvasLogicalW / 2, canvasLogicalH / 2);
-                    ctx.scale(killCamera.zoom, killCamera.zoom);
-                    ctx.translate(-targetX, -targetY);
-                }
-            }
-
             // ── DODGE FLASHES ─────────────────────────────────────────
             function spawnDodgeFlash(entity) {
                 if (dodgeFlashes.length < 40) {
@@ -3949,12 +3907,11 @@ const GAMEPAD_DEADZONE = 0.28;
 
 let lastGamepadNavTime = 0;
 let lastGamepadActionTime = 0;
-let previousGamepadButtons = [];
 let currentGamepadIndex = 0;
 
 function findActiveGamepad() {
     let gamepads = [];
-    try { gamepads = navigator.getGamepads(); } catch (e) { return null; }
+    try { gamepads = navigator.getGamepads(); } catch { return null; }
     if (!gamepads) return null;
 
     if (gamepads[currentGamepadIndex] && gamepads[currentGamepadIndex].connected) {
@@ -4175,7 +4132,6 @@ function handleGamepadGameplayInput(input) {
 function updateGamepadState() {
     const gp = findActiveGamepad();
     if (!gp) {
-        previousGamepadButtons = [];
         gamepadKeys = {};
         return;
     }
@@ -4186,11 +4142,6 @@ function updateGamepadState() {
 
     currentGamepadIndex = gp.index ?? 0;
     const input = readGamepadInput(gp);
-
-    // Edge detection for action cooldowns / future extensibility
-    const buttons = gp.buttons || [];
-    const pressedNow = buttons.map(b => !!b?.pressed);
-    previousGamepadButtons = pressedNow;
 
     if (handleGamepadMenuInput(input)) return;
     handleGamepadGameplayInput(input);
@@ -4205,7 +4156,6 @@ window.addEventListener('gamepadconnected', (e) => {
 window.addEventListener('gamepaddisconnected', () => {
     // Ignore disconnection events for gamepads when support is disabled
     gamepadKeys = {};
-    previousGamepadButtons = [];
 });
 
 // Spatial Navigation for the Menu Grid
@@ -4269,7 +4219,7 @@ window.addEventListener('gamepaddisconnected', () => {
             let gamepadAllowed = false;
             function uiGamepadLoop() {
                 if (gamepadAllowed) {
-                    try { updateGamepadState(); } catch (e) { gamepadAllowed = false; }
+                    try { updateGamepadState(); } catch { gamepadAllowed = false; }
                 }
                 requestAnimationFrame(uiGamepadLoop);
             }
@@ -4784,7 +4734,6 @@ window.addEventListener('gamepaddisconnected', () => {
                 dodgeFlashes = [];
                 screenShake = { intensity: 0, duration: 0 };
                 slowMotion = { active: false, scale: 1, duration: 0 };
-                killCamera = { active: false, target: null, zoom: 1, duration: 0 };
                 comboKills = [];
 
                 playBattleMusic();
@@ -4851,7 +4800,6 @@ window.addEventListener('gamepaddisconnected', () => {
 
                 // ── 3-2-1 COUNTDOWN ──────────────────────────────────
                 // Freeze the HUD timer until after the countdown
-                countdownActive = true;
                 document.getElementById('hudTimer').style.display = 'none';
                 let countdownStep = 0; // 0=3, 1=2, 2=1, 3=GO! → then start
                 const countdownDurations = [700, 700, 700, 600]; // ms per step
@@ -4887,7 +4835,6 @@ window.addEventListener('gamepaddisconnected', () => {
                         setTimeout(countdownTick, delay);
                     } else {
                         // Countdown done — start the real game
-                        countdownActive = false;
                         gameStartTime = Date.now();
                         startTimer();
                         lastGameFrameTime = 0;
@@ -5992,7 +5939,7 @@ window.addEventListener('gamepaddisconnected', () => {
                     if (streak >= 3) tryUnlockAchievement('winStreak3');
                     if (streak >= 5) tryUnlockAchievement('winStreak5');
                     if (streak >= 10) tryUnlockAchievement('winStreak10');
-                } catch(e) {}
+                } catch {}
             }
 
             function updateRoundPips() {
